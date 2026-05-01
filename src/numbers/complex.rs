@@ -2,7 +2,7 @@ use std::fmt::Debug;
 
 use super::*;
 
-/// A complex number a+bi
+/// A complex number a+bi.
 pub struct Complex<N: Arithmetic> {
     real: N,
     imag: N,
@@ -10,7 +10,7 @@ pub struct Complex<N: Arithmetic> {
 
 impl<N: Arithmetic> Complex<N> {
     /// Creates a new complex number with real and imaginary parts.
-    pub fn new(real: N, imag: N) -> Self {
+    pub const fn new(real: N, imag: N) -> Self {
         Self { real, imag }
     }
 }
@@ -37,7 +37,23 @@ impl<N: Arithmetic + Clone> Complex<N> {
     }
 }
 
+impl<N: Arithmetic + Clone + Into<f64>> Complex<N> {
+    /// Returns the argument of the complex number,
+    /// or `NAN` if the complex number is zero.
+    pub fn arg(&self) -> f64 {
+        let x = self.real().into();
+        let y = self.imag().into();
+
+        if x == 0.0 && y == 0.0 {
+            f64::NAN
+        } else {
+            f64::atan2(y, x)
+        }
+    }
+}
+
 impl<N: Arithmetic + AddIdentity + MulIdentity> Complex<N> {
+    /// Creates a new imaginary unit (i).
     pub fn imaginary() -> Self {
         Self::new(N::ZERO, N::ONE)
     }
@@ -67,10 +83,7 @@ impl<N: Arithmetic> Add<N> for Complex<N> {
     type Output = Complex<N>;
 
     fn add(self, rhs: N) -> Self::Output {
-        Self::Output::new(
-            self.real + rhs,
-            self.imag
-        )
+        Self::Output::new(self.real + rhs, self.imag)
     }
 }
 
@@ -78,10 +91,7 @@ impl<N: Arithmetic> Add for Complex<N> {
     type Output = Complex<N>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self::Output::new(
-            self.real + rhs.real,
-            self.imag + rhs.imag
-        )
+        Self::Output::new(self.real + rhs.real, self.imag + rhs.imag)
     }
 }
 
@@ -101,10 +111,7 @@ impl<N: Arithmetic> Sub<N> for Complex<N> {
     type Output = Complex<N>;
 
     fn sub(self, rhs: N) -> Self::Output {
-        Self::Output::new(
-            self.real - rhs,
-            self.imag
-        )
+        Self::Output::new(self.real - rhs, self.imag)
     }
 }
 
@@ -112,10 +119,7 @@ impl<N: Arithmetic> Sub for Complex<N> {
     type Output = Complex<N>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Self::Output::new(
-            self.real - rhs.real,
-            self.imag - rhs.imag
-        )
+        Self::Output::new(self.real - rhs.real, self.imag - rhs.imag)
     }
 }
 
@@ -135,10 +139,7 @@ impl<N: Arithmetic + Clone> Mul<N> for Complex<N> {
     type Output = Complex<N>;
 
     fn mul(self, rhs: N) -> Self::Output {
-        Self::Output::new(
-            self.real * rhs.clone(),
-            self.imag * rhs
-        )
+        Self::Output::new(self.real * rhs.clone(), self.imag * rhs)
     }
 }
 
@@ -169,10 +170,7 @@ impl<N: Arithmetic + Clone> Div<N> for Complex<N> {
     type Output = Complex<N>;
 
     fn div(self, rhs: N) -> Self::Output {
-        Self::new(
-            self.real / rhs.clone(),
-            self.imag / rhs,
-        )
+        Self::new(self.real / rhs.clone(), self.imag / rhs)
     }
 }
 
@@ -200,10 +198,7 @@ impl<N: Arithmetic + Clone> Neg for Complex<N> {
     type Output = Complex<N>;
 
     fn neg(self) -> Self::Output {
-        Self::Output::new(
-            -self.real(),            
-            -self.imag(),            
-        )
+        Self::Output::new(-self.real(), -self.imag())
     }
 }
 
@@ -213,7 +208,22 @@ impl<N: Arithmetic + Clone + PartialEq> PartialEq for Complex<N> {
     }
 }
 
-impl<N: Arithmetic + Clone + Eq> Eq for Complex<N> { }
+impl<N: Arithmetic + Clone + Eq> Eq for Complex<N> {}
+
+impl<N: Arithmetic + AddIdentity> AddIdentity for Complex<N> {
+    const ZERO: Self = Self::new(N::ZERO, N::ZERO);
+}
+
+impl<N: Arithmetic + Ring> MulIdentity for Complex<N> {
+    // `N` forming a ring must be assumed for `0 * n == 0`.
+    // Otherwise, `MulIdentity` would be ambiguous.
+    const ONE: Self = Self::new(N::ONE, N::ZERO);
+}
+
+impl<N: Arithmetic + Clone> UArithmetic for Complex<N> {}
+impl<N: Arithmetic + Clone> Arithmetic for Complex<N> {}
+impl<N: Arithmetic + Ring + Clone> Ring for Complex<N> {}
+impl<N: Arithmetic + Field + Clone> Field for Complex<N> {}
 
 #[cfg(test)]
 mod tests {
@@ -241,6 +251,28 @@ mod tests {
 
         assert_eq!(z.magnitude_squared(), 25);
         assert_eq!(w.magnitude_squared(), 9);
+    }
+
+    #[test]
+    fn argument() {
+        const EPSILON: f64 = 0.0005_f64;
+
+        let real = Complex::new(5_i32, 0_i32);
+        assert!(real.arg().abs() < EPSILON);
+
+        let imaginary = Complex::imaginary() * 4.0_f64;
+        let expected = std::f64::consts::FRAC_PI_2;
+        assert!((imaginary.arg() - expected).abs() < EPSILON);
+
+        let neg_imaginary = Complex::imaginary() * -9.0_f64;
+        let expected = -std::f64::consts::FRAC_PI_2;
+        assert!((neg_imaginary.arg() - expected).abs() < EPSILON);
+
+        let second_quadrant = Complex::new(-2.5, 2.5);
+        let expected = 3.0 * std::f64::consts::FRAC_PI_4;
+        assert!((second_quadrant.arg() - expected).abs() < EPSILON);
+
+        assert!(Complex::<f64>::ZERO.arg().is_nan());
     }
 
     #[test]
@@ -313,5 +345,13 @@ mod tests {
 
         assert_eq!(-z, Complex::new(-3, 4));
         assert_eq!(-Complex::new(0_i32, 0_i32), Complex::new(0_i32, 0_i32));
+    }
+
+    #[test]
+    fn algebraic_structure() {
+        let c = Complex::new(-8.3_f64, 1.234_f64);
+
+        assert_eq!(c, c.clone() * Complex::ONE);
+        assert_eq!(c, c.clone() + Complex::ZERO);
     }
 }

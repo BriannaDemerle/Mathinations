@@ -128,6 +128,8 @@ impl Arithmetic for isize {}
 /// - `N::ONE.neg() * n == n * N::ONE.neg() == n.neg()`
 /// - `n.neg().neg() == n`
 /// - `N::ZERO.neg() == N::ZERO`
+///
+/// All stable floats and signed integers implement `Ring`
 pub trait Ring:
     Sized
     + Add<Output = Self>
@@ -137,6 +139,16 @@ pub trait Ring:
     + MulIdentity
 {
 }
+
+impl Ring for f64 {}
+impl Ring for f32 {}
+
+impl Ring for i8 {}
+impl Ring for i16 {}
+impl Ring for i32 {}
+impl Ring for i64 {}
+impl Ring for i128 {}
+impl Ring for isize {}
 
 /// A trait for types that form a field under `+`, `-`, `*`, and `/`.
 ///
@@ -157,7 +169,7 @@ pub trait Ring:
 ///     `n.reciprocal()`: `n * n.reciprocal() == n.reciprocal() * n == N::ONE`
 /// - Multiplication is left- and right- distributive over addition:
 ///     `a * (b + c) == a * b + a * c` and `(b + c) * a == b * a + c * a`
-/// 
+///
 /// Some notable consequences of being a field are:
 /// - `N::ZERO * n == n * N::ZERO == N::ZERO`
 /// - `N::ONE.neg() * n == n * N::ONE.neg() == n.neg()`
@@ -165,16 +177,18 @@ pub trait Ring:
 /// - `N::ZERO.neg() == N::ZERO`
 /// - `N::ONE.reciprocal() == N::ONE`
 /// - `n.reciprocal().reciprocal() == n` if `n != N::ZERO`
+///
+/// All stable floats implement `Field`
 pub trait Field:
     Ring + Sub<Output = Self> + Div<Output = Self> + PartialEq
 {
     /// Returns the reciprocal or the multiplicative identity, or `None`
     /// if `self == Self::ZERO`, as there is no multiplicative inverse.
-    /// 
+    ///
     /// A field may not have a multiplicative inverse for the zero element,
     /// as it would imply the zero and one elements are identical, which breaks
     /// the field axioms:
-    /// 
+    ///
     /// Let `0` be `N::ZERO` and `1` be `N::ONE` \
     /// Let `x` be the multiplicative inverse of `0`, meaning `x * 0 = 1`
     /// ```fix
@@ -194,3 +208,6 @@ pub trait Field:
         }
     }
 }
+
+impl Field for f64 {}
+impl Field for f32 {}
